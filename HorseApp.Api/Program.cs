@@ -1,3 +1,5 @@
+using HorseApp.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace HorseApp.Api
 {
@@ -12,9 +14,18 @@ namespace HorseApp.Api
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
-            //Mine
 
             //Mine
+            builder.Services.AddDbContext<AppDbContext>(options =>
+            {
+                var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+                options.UseNpgsql(connectionString);
+            });
+
+
+            //Mine
+
+
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
