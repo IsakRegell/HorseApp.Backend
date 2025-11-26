@@ -8,12 +8,16 @@
 
        public string Email { get; set; } = string.Empty;
 
-        public int Age { get; set; }
+       public string? ProfileImageUrl { get; set; }
 
-        public Guid? LocationId { get; set; }
+       public string? Bio { get; set; }
+
+       public int Age { get; set; }
+
+       public Guid? LocationId { get; set; }
 
         // Klartext-lösenord som skickas in från klienten
         // (hashar vi senare i backend, inte här)
-        public string Password { get; set; } = string.Empty;
+       public string Password { get; set; } = string.Empty;
     }
 }
