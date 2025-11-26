@@ -6,7 +6,7 @@
 
         public int Age { get; set; }
 
-        public string? ProfilePictureUrl { get; set; }
+        public string? ProfileImageUrl { get; set; }
 
         public string? Bio { get; set; }
 

@@ -19,7 +19,7 @@ namespace HorseApp.Application.Validators.Users
                 .WithMessage("Ålder måste vara mellan 10 och 100 år.");
 
             //Bio
-            RuleFor(x => x.ProfilePictureUrl)
+            RuleFor(x => x.ProfileImageUrl)
                 .MaximumLength(200)
                 .WithMessage("Profilbildens URL får inte innehålla mer än 200 tecken.");
 
