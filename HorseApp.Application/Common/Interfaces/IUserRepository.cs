@@ -7,8 +7,10 @@ namespace HorseApp.Application.Common.Interfaces
         Task AddUserAsync(User user, CancellationToken ct);
         Task<bool> UsernameExistsAsync(string username, CancellationToken ct);
         Task<bool> EmailExistsAsync(string email, CancellationToken ct);
+        Task<User?> GetUserByIdAsync(Guid id, CancellationToken ct);
+        Task<(List<User> Users, int TotalCount)> GetUsersAsync(int page, int pageSize, CancellationToken ct);
+
         Task SaveChangesAsync(CancellationToken ct);
 
-        Task<User?> GetUserByIdAsync(Guid id, CancellationToken ct);
     }
 }

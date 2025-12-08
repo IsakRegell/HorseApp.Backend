@@ -19,6 +19,10 @@ namespace HorseApp.Application.Mapping
 
             // User -> UserResponseDto (när vi returnerar en user till klienten)
             CreateMap<User, UserResponseDto>();
+
+            CreateMap<User, UserListItemDto>();
+
+            CreateMap<UpdateUserProfileDto, User>();
         }
     }
 }
