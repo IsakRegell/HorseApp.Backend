@@ -1,5 +1,6 @@
-﻿using HorseApp.Application.Users.Commands;
+﻿using HorseApp.Application.Common.DTOs;
 using HorseApp.Application.DTOs.Users;
+using HorseApp.Application.Users.Commands;
 using HorseApp.Application.Users.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -20,11 +21,29 @@ namespace HorseApp.Api.Controllers
         public async Task<ActionResult<UserResponseDto>> GetUserById(Guid id, CancellationToken ct)
         {
             var query = new GetUserByIdQuery(id);
+
             var result = await _mediator.Send(query, ct);
+
             if (result is null)
             {
                 return NotFound();
             }
+
+            return Ok(result);
+        }
+
+        [HttpGet("get-all-users")]
+        public async Task<ActionResult<PaginationResponseDto<UserListItemDto>>> GetUsers(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
+        {
+            // 1. Bygg query-objektet
+            var query = new GetAllUsersQuery(page, pageSize);
+
+            // 2. Skicka queryn via MediatR
+            var result = await _mediator.Send(query);
+
+            // 3. Returnera 200 OK med pagination-response
             return Ok(result);
         }
 
@@ -34,10 +53,31 @@ namespace HorseApp.Api.Controllers
         public async Task<ActionResult<UserResponseDto>> CreateUser([FromBody] CreateUserDto dto, CancellationToken ct)
         {
             var command = new CreateUserCommand(dto);
-            var result = await _mediator.Send(command, ct);
-            return Ok(result);
 
-            //return CreatedAtAction(nameof(CreateUser), new { id = result.Id }, result);
+            var result = await _mediator.Send(command, ct);
+
+            return Ok(result);
+        }
+
+        [HttpPut("{id:guid}")]
+        public async Task<ActionResult<UserResponseDto>> UpdateUserProfile(Guid id, [FromBody] UpdateUserProfileDto dto, CancellationToken ct)
+        {
+            // 1. Bygg command-objektet
+            var command = new UpdateUserProfileCommand(id, dto);
+
+            // 2. Skicka commandet via MediatR
+            var result = await _mediator.Send(command);
+
+            // 3. Returnera 200 OK med uppdaterad användare
+            return Ok(result);
+        }
+
+        [HttpDelete("{id:guid}")]
+        public async Task<IActionResult> DeleteUser(Guid id)
+        {
+            var command = new DeleteUserCommand(id);
+            await _mediator.Send(command);
+            return NoContent(); // 204
         }
 
     }
