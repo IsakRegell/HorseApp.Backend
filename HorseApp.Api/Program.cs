@@ -33,6 +33,7 @@ namespace HorseApp.Api
             });
 
             builder.Services.AddScoped<IUserRepository, UserRepository>();
+            builder.Services.AddScoped<IPostRepository, PostRepository>();
             builder.Services.AddAutoMapper(typeof(UserMappingProfile).Assembly);
 
 
