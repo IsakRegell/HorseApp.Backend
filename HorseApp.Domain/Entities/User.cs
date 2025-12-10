@@ -25,5 +25,10 @@
         public DateTime CreatedAtUtc { get; set; }
 
         public DateTime? UpdatedAtUtc { get; set; }
+
+        public bool IsDeleted { get; set; }          // markerar om användaren är soft-deleted
+
+        public DateTime? DeletedAtUtc { get; set; }  // när användaren soft-deletades
+
     }
 }
