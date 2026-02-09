@@ -10,14 +10,13 @@ namespace HorseApp.Application.Posts.Commands
         : IRequestHandler<CreatePostCommand, PostResponseDto>
     {
         private readonly IMapper _mapper;
-        private readonly IPostRepository _postRepository;
+        private readonly IApplicationDbContext _db;
 
-        public CreatePostCommandHandler(IMapper mapper, IPostRepository postRepository)
+        public CreatePostCommandHandler(IMapper mapper, IApplicationDbContext db)
         {
             _mapper = mapper;
-            _postRepository = postRepository;
+            _db = db;
         }
-
 
         public async Task<PostResponseDto> Handle(CreatePostCommand request, CancellationToken ct)
         {
@@ -28,14 +27,13 @@ namespace HorseApp.Application.Posts.Commands
             post.CreatedAtUtc = DateTime.UtcNow;
 
             // 3️ Spara i databasen
-            await _postRepository.AddPostAsync(post, ct);
-            await _postRepository.SaveChangesAsync(ct);
+            _db.Posts.Add(post);
+            await _db.SaveChangesAsync(ct);
 
             // 4️ Mappa tillbaka till Response DTO
             var response = _mapper.Map<PostResponseDto>(post);
 
             return response;
         }
-
     }
 }

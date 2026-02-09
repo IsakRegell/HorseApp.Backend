@@ -1,10 +1,12 @@
+using HorseApp.Api.Services;
 using HorseApp.Application.Common.Interfaces;
 using HorseApp.Application.Mapping;
 using HorseApp.Application.Users.Commands;
 using HorseApp.Infrastructure.Data;
-using HorseApp.Infrastructure.Data.Repositories;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 
 namespace HorseApp.Api
 {
@@ -14,35 +16,103 @@ namespace HorseApp.Api
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
 
+            // Swagger + Bearer auth knapp
+            builder.Services.AddSwaggerGen(options =>
+            {
+                options.SwaggerDoc("v1", new OpenApiInfo
+                {
+                    Title = "HorseApp.Api",
+                    Version = "v1"
+                });
 
-            //Mine
+                options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    Name = "Authorization",
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    BearerFormat = "JWT",
+                    In = ParameterLocation.Header,
+                    Description = "Skriv: Bearer {din JWT token}"
+                });
+
+                options.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        },
+                        Array.Empty<string>()
+                    }
+                });
+            });
+
+            // ===== Auth (Supabase JWT) =====
+            var supabaseProjectUrl = builder.Configuration["Supabase:ProjectUrl"];
+            var supabaseAudience = builder.Configuration["Supabase:JwtAudience"] ?? "authenticated";
+
+            if (string.IsNullOrWhiteSpace(supabaseProjectUrl))
+            {
+                throw new InvalidOperationException("Supabase:ProjectUrl saknas i appsettings.json");
+            }
+
+            var supabaseIssuer = $"{supabaseProjectUrl}/auth/v1";
+
+            builder.Services
+                .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
+                {
+                    options.Authority = supabaseIssuer;
+                    options.RequireHttpsMetadata = true;
+
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidIssuer = supabaseIssuer,
+
+                        ValidateAudience = true,
+                        ValidAudience = supabaseAudience,
+
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+
+                        ClockSkew = TimeSpan.FromSeconds(30)
+                    };
+                });
+
+            builder.Services.AddAuthorization();
+
+            builder.Services.AddHttpContextAccessor();
+            builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+            // ===== Auth (Supabase JWT) =====
+
+            // ===== Db =====
             builder.Services.AddDbContext<AppDbContext>(options =>
             {
                 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
                 options.UseNpgsql(connectionString);
             });
 
+            builder.Services.AddScoped<IApplicationDbContext>(sp =>
+                sp.GetRequiredService<AppDbContext>());
+            // ===== Db =====
+
             builder.Services.AddMediatR(cfg =>
             {
                 cfg.RegisterServicesFromAssembly(typeof(CreateUserCommand).Assembly);
             });
 
-            builder.Services.AddScoped<IUserRepository, UserRepository>();
-            builder.Services.AddScoped<IPostRepository, PostRepository>();
             builder.Services.AddAutoMapper(typeof(UserMappingProfile).Assembly);
-
-
-            //Mine
-
 
             var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
@@ -51,8 +121,8 @@ namespace HorseApp.Api
 
             app.UseHttpsRedirection();
 
+            app.UseAuthentication();
             app.UseAuthorization();
-
 
             app.MapControllers();
 

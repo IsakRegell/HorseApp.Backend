@@ -2,26 +2,27 @@
 using HorseApp.Application.Common.Interfaces;
 using HorseApp.Application.DTOs.Posts;
 using MediatR;
-
+using Microsoft.EntityFrameworkCore;
 
 namespace HorseApp.Application.Posts.Commands
 {
     public sealed class UpdatePostCommandHandler
         : IRequestHandler<UpdatePostCommand, PostResponseDto>
     {
-        private readonly IPostRepository _postRepository;
+        private readonly IApplicationDbContext _db;
         private readonly IMapper _mapper;
 
-        public UpdatePostCommandHandler(IPostRepository postRepository, IMapper mapper)
+        public UpdatePostCommandHandler(IApplicationDbContext db, IMapper mapper)
         {
-            _postRepository = postRepository;
+            _db = db;
             _mapper = mapper;
         }
 
         public async Task<PostResponseDto> Handle(UpdatePostCommand request, CancellationToken cancellationToken)
         {
             // 1️ Hämta befintlig post
-            var post = await _postRepository.GetPostByIdAsync(request.Id, cancellationToken);
+            var post = await _db.Posts.FirstOrDefaultAsync(x => x.Id == request.Id, cancellationToken);
+
             if (post is null)
                 throw new KeyNotFoundException("Inlägg hittades inte");
 
@@ -41,7 +42,7 @@ namespace HorseApp.Application.Posts.Commands
             post.UpdatedAtUtc = DateTime.UtcNow;
 
             // 3️ Spara
-            await _postRepository.SaveChangesAsync(cancellationToken);
+            await _db.SaveChangesAsync(cancellationToken);
 
             // 4️ Returnera uppdaterad post
             return _mapper.Map<PostResponseDto>(post);

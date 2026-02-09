@@ -1,8 +1,8 @@
 ﻿using AutoMapper;
-using HorseApp.Application.Users.Commands;
-using HorseApp.Application.Common.Interfaces; 
-using MediatR;
+using HorseApp.Application.Common.Interfaces;
 using HorseApp.Application.DTOs.Users;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace HorseApp.Application.Users.Commands
 {
@@ -10,24 +10,22 @@ namespace HorseApp.Application.Users.Commands
         : IRequestHandler<UpdateUserProfileCommand, UserResponseDto>
     {
         private readonly IMapper _mapper;
-        private readonly IUserRepository _userRepository;
+        private readonly IApplicationDbContext _db;
 
-        public UpdateUserProfileCommandHandler(IMapper mapper, IUserRepository userRepository)
+        public UpdateUserProfileCommandHandler(IMapper mapper, IApplicationDbContext db)
         {
             _mapper = mapper;
-            _userRepository = userRepository;
+            _db = db;
         }
 
         public async Task<UserResponseDto> Handle(
-        UpdateUserProfileCommand request,
-        CancellationToken ct)
+            UpdateUserProfileCommand request,
+            CancellationToken ct)
         {
-            var user = await _userRepository.GetUserByIdAsync(request.UserId, ct);
+            var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == request.UserId, ct);
 
             if (user is null)
-            {
                 throw new KeyNotFoundException($"Användare med id '{request.UserId}' hittades ej.");
-            }
 
             // 2. Mappa DTO → befintlig entity (uppdatera fälten)
             _mapper.Map(request.Payload, user);
@@ -36,14 +34,12 @@ namespace HorseApp.Application.Users.Commands
             user.UpdatedAtUtc = DateTime.UtcNow;
 
             // 4. Spara ändringar
-            await _userRepository.SaveChangesAsync(ct);
+            await _db.SaveChangesAsync(ct);
 
             // 5. Mappa entity → response dto
             var response = _mapper.Map<UserResponseDto>(user);
 
             return response;
-
         }
-
     }
 }

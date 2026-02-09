@@ -3,20 +3,21 @@ using HorseApp.Application.Common.DTOs;
 using HorseApp.Application.Common.Interfaces;
 using HorseApp.Application.DTOs.Users;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace HorseApp.Application.Users.Queries
 {
     public sealed class GetAllUsersQueryHandler
-    : IRequestHandler<GetAllUsersQuery, PaginationResponseDto<UserListItemDto>>
+        : IRequestHandler<GetAllUsersQuery, PaginationResponseDto<UserListItemDto>>
     {
-        private readonly IUserRepository _userRepository;
+        private readonly IApplicationDbContext _db;
         private readonly IMapper _mapper;
 
         public GetAllUsersQueryHandler(
-            IUserRepository userRepository,
+            IApplicationDbContext db,
             IMapper mapper)
         {
-            _userRepository = userRepository;
+            _db = db;
             _mapper = mapper;
         }
 
@@ -24,16 +25,18 @@ namespace HorseApp.Application.Users.Queries
             GetAllUsersQuery request,
             CancellationToken cancellationToken)
         {
-            // 1. Hämta sida + totalcount från repo
-            var (users, totalCount) = await _userRepository.GetUsersAsync(
-                request.Page,
-                request.PageSize,
-                cancellationToken);
+            var baseQuery = _db.Users.AsNoTracking();
 
-            // 2. Mappa entities -> DTOs
+            var totalCount = await baseQuery.CountAsync(cancellationToken);
+
+            var users = await baseQuery
+                .OrderByDescending(x => x.CreatedAtUtc)
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToListAsync(cancellationToken);
+
             var userDtos = _mapper.Map<List<UserListItemDto>>(users);
 
-            // 3. Bygg pagination-response
             var response = new PaginationResponseDto<UserListItemDto>
             {
                 Page = request.Page,
@@ -44,6 +47,5 @@ namespace HorseApp.Application.Users.Queries
 
             return response;
         }
-
     }
 }

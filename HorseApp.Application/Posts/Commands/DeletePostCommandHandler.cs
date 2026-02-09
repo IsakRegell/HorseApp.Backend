@@ -1,22 +1,23 @@
 ﻿using HorseApp.Application.Common.Interfaces;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace HorseApp.Application.Posts.Commands
 {
     public sealed class DeletePostCommandHandler
         : IRequestHandler<DeletePostCommand, Unit>
     {
-        private readonly IPostRepository _postRepository;
+        private readonly IApplicationDbContext _db;
 
-        public DeletePostCommandHandler(IPostRepository postRepository)
+        public DeletePostCommandHandler(IApplicationDbContext db)
         {
-            _postRepository = postRepository;
+            _db = db;
         }
 
         public async Task<Unit> Handle(DeletePostCommand request, CancellationToken cancellationToken)
         {
             // 1️ Hämta posten
-            var post = await _postRepository.GetPostByIdAsync(request.Id, cancellationToken);
+            var post = await _db.Posts.FirstOrDefaultAsync(x => x.Id == request.Id, cancellationToken);
 
             if (post is null)
                 throw new KeyNotFoundException("Inlägget hittades inte");
@@ -26,7 +27,7 @@ namespace HorseApp.Application.Posts.Commands
             post.DeletedAtUtc = DateTime.UtcNow;
 
             // 3️ Spara ändringarna
-            await _postRepository.SaveChangesAsync(cancellationToken);
+            await _db.SaveChangesAsync(cancellationToken);
 
             return Unit.Value;
         }
