@@ -5,36 +5,41 @@ namespace HorseApp.Api.Services
 {
     public sealed class CurrentUserService : ICurrentUserService
     {
-        private readonly IHttpContextAccessor _http;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public CurrentUserService(IHttpContextAccessor http)
+        public CurrentUserService(IHttpContextAccessor httpContextAccessor)
         {
-            _http = http;
+            _httpContextAccessor = httpContextAccessor;
         }
 
-        public bool IsAuthenticated
+        /// <summary>
+        /// Intern User ID (från database)
+        /// Läggs till av UserSyncMiddleware
+        /// </summary>
+        public Guid UserId => Guid.Parse(GetRequiredClaim("user_id"));
+
+        /// <summary>
+        /// Email från Supabase token
+        /// </summary>
+        public string Email => GetRequiredClaim("email");
+
+        /// <summary>
+        /// Supabase Auth User ID
+        /// </summary>
+
+        private string GetRequiredClaim(string type)
         {
-            get
-            {
-                var user = _http.HttpContext?.User;
-                return user?.Identity?.IsAuthenticated == true;
-            }
-        }
+            var user = _httpContextAccessor.HttpContext?.User;
 
-        public Guid UserId
-        {
-            get
-            {
-                var user = _http.HttpContext?.User;
+            if (user?.Identity?.IsAuthenticated != true)
+                throw new Exception("User is not authenticated.");
 
-                var sub = user?.FindFirstValue("sub")
-                          ?? user?.FindFirstValue(ClaimTypes.NameIdentifier);
+            var claim = user.FindFirst(type);
 
-                if (string.IsNullOrWhiteSpace(sub))
-                    return Guid.Empty;
+            if (claim == null || string.IsNullOrWhiteSpace(claim.Value))
+                throw new Exception($"Missing '{type}' claim.");
 
-                return Guid.TryParse(sub, out var id) ? id : Guid.Empty;
-            }
+            return claim.Value;
         }
     }
 }

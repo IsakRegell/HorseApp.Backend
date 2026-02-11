@@ -2,11 +2,13 @@ using HorseApp.Api.Services;
 using HorseApp.Application.Common.Interfaces;
 using HorseApp.Application.Mapping;
 using HorseApp.Application.Users.Commands;
+using HorseApp.Infrastructure.Auth;
 using HorseApp.Infrastructure.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Supabase;
 
 namespace HorseApp.Api
 {
@@ -57,35 +59,29 @@ namespace HorseApp.Api
             // ===== Auth (Supabase JWT) =====
             var supabaseProjectUrl = builder.Configuration["Supabase:ProjectUrl"];
             var supabaseAudience = builder.Configuration["Supabase:JwtAudience"] ?? "authenticated";
+            var supabaseKey = builder.Configuration["Supabase:Key"];
 
             if (string.IsNullOrWhiteSpace(supabaseProjectUrl))
             {
                 throw new InvalidOperationException("Supabase:ProjectUrl saknas i appsettings.json");
             }
 
+            builder.Services.AddScoped<Supabase.Client>(_ =>
+            new Supabase.Client(
+            supabaseProjectUrl ?? "https://fake.url/",
+            supabaseKey ?? "fake-key",
+            new SupabaseOptions { AutoRefreshToken = false }
+             )
+             );
+
             var supabaseIssuer = $"{supabaseProjectUrl}/auth/v1";
+            var metadataAddress = $"{supabaseIssuer}/.well-known/openid-configuration";
 
             builder.Services
-                .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddJwtBearer(options =>
-                {
-                    options.Authority = supabaseIssuer;
-                    options.RequireHttpsMetadata = true;
+                .AddAuthentication("SupabaseAuth")
+                .AddScheme<SupabaseAuthenticationOptions, SupabaseAuthenticationHandler>(
+                "SupabaseAuth", _ => { });
 
-                    options.TokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuer = true,
-                        ValidIssuer = supabaseIssuer,
-
-                        ValidateAudience = true,
-                        ValidAudience = supabaseAudience,
-
-                        ValidateLifetime = true,
-                        ValidateIssuerSigningKey = true,
-
-                        ClockSkew = TimeSpan.FromSeconds(30)
-                    };
-                });
 
             builder.Services.AddAuthorization();
 
